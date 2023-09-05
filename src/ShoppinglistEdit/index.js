@@ -13,6 +13,22 @@ import {
 } from "@mantine/core";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
+import { useQuery, useMutation } from "@tanstack/react-query";
+
+const getShoppinglist = async ({ id }) => {
+  const response = await axios.get("http://localhost:5050/shoppinglist/" + id);
+  return response.data;
+};
+
+const updateShoppinglist = async ({ id, data }) => {
+  const response = await axios({
+    method: "PUT",
+    url: "http://localhost:5050/shoppinglist/" + id,
+    headers: { "Content-Type": "application/json" },
+    data: data,
+  });
+  return response.data;
+};
 
 function ShoppinglistEdit() {
   const { id } = useParams();
@@ -21,52 +37,92 @@ function ShoppinglistEdit() {
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [priority, setPriority] = useState("");
+  const { data } = useQuery({
+    queryKey: ["shoppinglist", id],
+    queryFn: () => getShoppinglist(id),
+    onSuccess: (data) => {
+      setName(data.name);
+      setQuantity(data.quantity);
+      setUnit(data.unit);
+      setPriority(data.priority);
+    },
+  });
 
-  useEffect(() => {
-    axios
-      .get("http://localhost:5050/shoppinglist/" + id)
-      .then((response) => {
-        setName(response.data.name);
-        setQuantity(response.data.quantity);
-        setUnit(response.data.unit);
-        setPriority(response.data.priority);
-      })
-      .catch((error) => {
-        notifications.show({
-          name: error.response.data.message,
-          color: "red",
-        });
+  // useEffect(() => {
+  //   axios
+  //     .get("http://localhost:5050/shoppinglist/" + id)
+  //     .then((response) => {
+  //       setName(response.data.name);
+  //       setQuantity(response.data.quantity);
+  //       setUnit(response.data.unit);
+  //       setPriority(response.data.priority);
+  //     })
+  //     .catch((error) => {
+  //       notifications.show({
+  //         name: error.response.data.message,
+  //         color: "red",
+  //       });
+  //     });
+  // }, []);
+
+  const updateMutation = useMutation({
+    mutationFn: updateShoppinglist,
+    onSuccess: () => {
+      notifications.show({
+        title: "Shoppin List Edited",
+        color: "red",
       });
-  }, []);
+      navigate("/");
+    },
+    onError: (error) => {
+      notifications.show({
+        title: error.response.data.message,
+        color: "red",
+      });
+    },
+  });
 
   const handleUpdateshoppinglist = async (event) => {
     event.preventDefault();
-    try {
-      await axios({
-        method: "PUT",
-        url: "http://localhost:5050/shoppinglist/" + id,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        data: JSON.stringify({
-          name: name,
-          quantity: quantity,
-          unit: unit,
-          priority: priority,
-        }),
-      });
-      notifications.show({
-        name: "List Edited",
-        color: "green",
-      });
-      navigate("/");
-    } catch (error) {
-      notifications.show({
-        name: error.response.data.message,
-        color: "red",
-      });
-    }
+    updateMutation.mutate({
+      id: id,
+      data: JSON.stringify({
+        name: name,
+        quantity: quantity,
+        unit: unit,
+        priority: priority,
+      }),
+    });
   };
+
+  // const handleUpdateshoppinglist = async (event) => {
+  //   event.preventDefault();
+  //   try {
+  //     await axios({
+  //       method: "PUT",
+  //       url: "http://localhost:5050/shoppinglist/" + id,
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       data: JSON.stringify({
+  //         name: name,
+  //         quantity: quantity,
+  //         unit: unit,
+  //         priority: priority,
+  //       }),
+  //     });
+  //     notifications.show({
+  //       name: "List Edited",
+  //       color: "green",
+  //     });
+  //     navigate("/");
+  //   } catch (error) {
+  //     notifications.show({
+  //       name: error.response.data.message,
+  //       color: "red",
+  //     });
+  //   }
+  // };
 
   return (
     <Container>

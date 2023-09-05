@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "react";
+import axios from "axios";
 import {
   Container,
   Title,
@@ -13,44 +13,84 @@ import {
 } from "@mantine/core";
 import { Link, useNavigate } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+
+const addShopppinglist = async (data) => {
+  const response = await axios({
+    method: "POST",
+    url: "http://localhost:5050/shoppinglist",
+    headers: { "Content-Type": "application/json" },
+    data: data,
+  });
+  return response.data;
+};
 
 function ShoppinglistAdd() {
   const navigate = useNavigate();
-  const [name, setname] = useState("");
+  const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [priority, setPriority] = useState("");
 
-  const handleAddNewShoppinglist = async (event) => {
-    event.preventDefault();
-    try {
-      await axios({
-        method: "POST",
-        url: "http://localhost:5050/shoppinglist",
-        header: {
-          "Content-Type": "application/json",
-        },
-        data: JSON.stringify({
-          name: name,
-          quantity: quantity,
-          unit: unit,
-          priority: priority,
-        }),
-      });
-
+  const createMutation = useMutation({
+    mutationFn: addShopppinglist,
+    onSuccess: () => {
       notifications.show({
-        name: "Item Added",
+        title: "List Added",
         color: "green",
       });
-
       navigate("/");
-    } catch (error) {
+    },
+    onError: (error) => {
       notifications.show({
-        name: error.response.data.message,
+        title: error.response.data.message,
         color: "red",
       });
-    }
+    },
+  });
+
+  const handleAddNewShoppinglist = async (event) => {
+    event.preventDefault();
+    createMutation.mutate(
+      JSON.stringify({
+        name: name,
+        quantity: quantity,
+        unit: unit,
+        priority: priority,
+      })
+    );
   };
+
+  // const handleAddNewShoppinglist = async (event) => {
+  //   event.preventDefault();
+  //   try {
+  //     await axios({
+  //       method: "POST",
+  //       url: "http://localhost:5050/shoppinglist",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       data: JSON.stringify({
+  //         name: name,
+  //         quantity: quantity,
+  //         unit: unit,
+  //         priority: priority,
+  //       }),
+  //     });
+
+  //     notifications.show({
+  //       name: "Item Added",
+  //       color: "green",
+  //     });
+
+  //     navigate("/");
+  //   } catch (error) {
+  //     notifications.show({
+  //       name: error.response.data.message,
+  //       color: "red",
+  //     });
+  //   }
+  // };
 
   return (
     <Container>
@@ -66,7 +106,7 @@ function ShoppinglistAdd() {
           label="Name"
           description="The name of the shoppinglist"
           withAsterisk
-          onChange={(event) => setname(event.target.value)}
+          onChange={(event) => setName(event.target.value)}
         />
         <Space h="20px" />
         <Divider />
@@ -77,7 +117,7 @@ function ShoppinglistAdd() {
           label="Quantity"
           description="The quantity of the shoppinglist"
           withAsterisk
-          onChange={(event) => setQuantity(event.target.value)}
+          onChange={setQuantity}
         />
         <Space h="20px" />
         <Divider />

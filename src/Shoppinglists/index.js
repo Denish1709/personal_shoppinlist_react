@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -9,44 +9,91 @@ import {
   Group,
   Space,
   Button,
-  Loader,
   LoadingOverlay,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
-const fetchShoppinglists = async (priority = "") => {
-  const response = await axios.get(
-    "http://localhost:5050/shoppinglist" +
-      (priority !== "" ? "?priority=" + priority : "")
-  );
-  return response.data;
+const fetchShoppinglists = async (priority, purchased) => {
+  if (priority !== "") {
+    const response = await axios.get(
+      "http://localhost:5050/shoppinglist?priority=" + priority
+    );
+    return response.data;
+  } else if (purchased !== "") {
+    const response = await axios.get(
+      "http://localhost:5050/shoppinglist?purchased=" + purchased
+    );
+    return response.data;
+  } else {
+    const response = await axios.get("http://localhost:5050/shoppinglist");
+    return response.data;
+  }
 };
 
-const deleteShoppinglist = async (shoppinglist_id = "") => {
+const updateShoppinglist = async (shoppinglist_id = "") => {
+  await axios({
+    method: "PUT",
+    url: "http://localhost:5050/shoppinglist/" + shoppinglist_id + "/purchased",
+  });
+};
+
+const deleteShoppinglist = async (list_id = "") => {
   const response = await axios({
     method: "DELETE",
-    url: "http://localhost:5050/shoppinglist/" + shoppinglist_id,
+    url: "http://localhost:5050/shoppinglist/" + list_id,
   });
-  return response.date;
+  return response.data;
 };
 
 function Shoppinglists() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [priority, setPriority] = useState("");
+  const [purchased, setPurchased] = useState("");
+
   const {
     isLoading,
     isError,
     data: shoppinglists,
     error,
   } = useQuery({
-    queryKey: ["shoppinglists", priority],
-    queryFn: () => fetchShoppinglists(priority),
+    queryKey: ["shoppinglists", priority, purchased],
+    queryFn: () => fetchShoppinglists(priority, purchased),
+  });
+
+  const memoryShoppinglist = queryClient.getQueryData([
+    "shoppinglists",
+    "",
+    "",
+  ]);
+  const priorityOptions = useMemo(() => {
+    let options = [];
+    if (shoppinglists && shoppinglists.length > 0) {
+      shoppinglists.forEach((shoppinglist) => {
+        if (!options.includes(shoppinglist.priority)) {
+          options.push(shoppinglist.priority);
+        }
+      });
+    }
+    return options;
+  }, [memoryShoppinglist]);
+
+  const updateMutation = useMutation({
+    mutationFn: updateShoppinglist,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["shoppinglist", priority, purchased],
+      });
+      notifications.show({
+        title: "updated Purchase",
+        color: "green",
+      });
+    },
   });
 
   const deleteMutation = useMutation({
-    mutationFN: deleteShoppinglist,
+    mutationFn: deleteShoppinglist,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["shoppinglists", priority],
@@ -57,8 +104,6 @@ function Shoppinglists() {
       });
     },
   });
-
-  if (isLoading) return <Loader />;
 
   // useEffect(() => {
   //   axios
@@ -85,14 +130,42 @@ function Shoppinglists() {
   return (
     <>
       <Group position="apart">
-        <Title align="center">Shopping List</Title>
+        <Title order={3} align="center">
+          Shopping List
+        </Title>
         <Button component={Link} to="/shoppinglist_add" color="green">
           Add New
         </Button>
       </Group>
       <Space h="20px" />
       <Group>
-        <Button
+        <select
+          value={priority}
+          onChange={(event) => {
+            setPriority(event.target.value);
+          }}
+        >
+          <option value="">All Priority</option>
+          {priorityOptions.map((priority) => {
+            return (
+              <option key={priority} value={priority}>
+                {priority}
+              </option>
+            );
+          })}
+        </select>
+
+        <select
+          value={purchased}
+          onChange={(event) => {
+            setPurchased(event.target.value);
+          }}
+        >
+          <option value="">All purchased</option>
+          <option value="yes">Purchased</option>
+          <option value="no">Unpurchased</option>
+        </select>
+        {/* <Button
           onClick={() => {
             setPriority("");
           }}
@@ -104,22 +177,22 @@ function Shoppinglists() {
             setPriority("Low");
           }}
         >
-          Drama
+          Low
         </Button>
         <Button
           onClick={() => {
             setPriority("Medium");
           }}
         >
-          Fantasy
+          Medium
         </Button>
         <Button
           onClick={() => {
             setPriority("High");
           }}
         >
-          Action
-        </Button>
+          High
+        </Button> */}
       </Group>
       <Space h="20px" />
       <LoadingOverlay visible={isLoading} />
@@ -146,6 +219,16 @@ function Shoppinglists() {
                         radius="50px"
                       >
                         Edit
+                      </Button>
+                      <Button
+                        color="blue"
+                        size="xs"
+                        radius="50px"
+                        onClick={() => {
+                          updateMutation.mutate(shoppinglist._id);
+                        }}
+                      >
+                        Purchased
                       </Button>
                       <Button
                         color="red"

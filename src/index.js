@@ -5,17 +5,23 @@ import reportWebVitals from "./reportWebVitals";
 import { MantineProvider } from "@mantine/core";
 import { ModalsProvider } from "@mantine/modals";
 import { Notification } from "@mantine/core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
+
+const queryClient = new QueryClient();
+
 root.render(
   <React.StrictMode>
-    <MantineProvider withGlobalStyles withNormalizeCSS>
-      <ModalsProvider>
-        <App />
-        {/* <Notification /> */}
-      </ModalsProvider>
-    </MantineProvider>
+    <QueryClientProvider client={queryClient}>
+      <MantineProvider withGlobalStyles withNormalizeCSS>
+        <ModalsProvider>
+          <App />
+          {/* <Notification /> */}
+        </ModalsProvider>
+      </MantineProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );
 
